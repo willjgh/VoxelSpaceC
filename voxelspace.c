@@ -19,6 +19,7 @@ typedef struct {
     float y; // y position on map
     float height; // height in space
     float angle; // yaw angle of camera
+    float horizon; // pitch displacement of camera
     float zfar; // far plane distance
 } camera_t;
 
@@ -28,32 +29,47 @@ camera_t camera = {
     .y = 512,
     .height = 150.0,
     .angle = 0.0,
-    .zfar = 400
+    .horizon = 100,
+    .zfar = 500
 };
 
 // keyboard input
 void processinput(void) {
-    if (keystate(KEY_UP)) {
-        // relative to camera angle
+    // change position relative to camera
+    if (keystate(KEY_W)) {
         camera.x -= sin(camera.angle);
         camera.y -= cos(camera.angle);
     }
-    if (keystate(KEY_DOWN)) {
-        // relative to camera angle
+    if (keystate(KEY_S)) {
         camera.x += sin(camera.angle);
         camera.y += cos(camera.angle);
     }
-    if (keystate(KEY_LEFT)) {
-        camera.angle+= 0.02;
+    if (keystate(KEY_D)) {
+        camera.x += cos(camera.angle);
+        camera.y -= sin(camera.angle);
     }
-    if (keystate(KEY_RIGHT)) {
-        camera.angle-= 0.02;
+    if (keystate(KEY_A)) {
+        camera.x -= cos(camera.angle);
+        camera.y += sin(camera.angle);
+    }
+    if (keystate(KEY_SPACE)) {
+        camera.height++;
     }
     if (keystate(KEY_SHIFT)) {
         camera.height--;
     }
-    if (keystate(KEY_SPACE)) {
-        camera.height++;
+    // change angles
+    if (keystate(KEY_LEFT)) {
+        camera.angle += 0.02;
+    }
+    if (keystate(KEY_RIGHT)) {
+        camera.angle -= 0.02;
+    }
+    if (keystate(KEY_UP)) {
+        camera.horizon += 2;
+    }
+    if (keystate(KEY_DOWN)) {
+        camera.horizon -= 2;
     }
 }
 
@@ -123,29 +139,29 @@ int main(void) {
                 // find position on map (module map size)
                 int mapoffset = ((1024 * ((int)(ry) & 1023)) + ((int)(rx) & 1023));
 
-                // get height on screen: heightmap value + perspective correction + relative to camera
-                int heightonscreen = (int)(((camera.height - heightmap[mapoffset]) / z) * SCALE_FACTOR);
+                //  heightmap value + perspective correction + relative to camera
+                int projected_height = (int)(((camera.height - heightmap[mapoffset]) / z) * SCALE_FACTOR + camera.horizon);
 
                 // clamp to display limits
-                if (heightonscreen < 0) {
-                    heightonscreen = 0;
+                if (projected_height < 0) {
+                    projected_height = 0;
                 }
-                if (heightonscreen > SCREEN_HEIGHT - 1) {
-                    heightonscreen = SCREEN_HEIGHT - 1;
+                if (projected_height > SCREEN_HEIGHT - 1) {
+                    projected_height = SCREEN_HEIGHT - 1;
                 }
 
                 // higher than current max height drawn (inverted y)
-                if (heightonscreen < max_height) {
+                if (projected_height < max_height) {
 
                     // draw from new height down to prev max
-                    for (int y = heightonscreen; y < max_height; y++) {
+                    for (int y = projected_height; y < max_height; y++) {
 
                         // get colour info
                         framebuffer[(SCREEN_WIDTH * y) + i] = (uint8_t)colourmap[mapoffset];
                     }
 
                     // update max height
-                    max_height = heightonscreen;
+                    max_height = projected_height;
                 }
             }
         }
