@@ -18,6 +18,7 @@ typedef struct {
     float x; // x position on map
     float y; // y position on map
     float height; // height in space
+    float angle; // yaw angle of camera
     float zfar; // far plane distance
 } camera_t;
 
@@ -26,22 +27,33 @@ camera_t camera = {
     .x = 512,
     .y = 512,
     .height = 150.0,
+    .angle = 0.0,
     .zfar = 400
 };
 
 // keyboard input
 void processinput(void) {
     if (keystate(KEY_UP)) {
-        camera.y++;
+        // relative to camera angle
+        camera.x -= sin(camera.angle);
+        camera.y -= cos(camera.angle);
     }
     if (keystate(KEY_DOWN)) {
-        camera.y--;
+        // relative to camera angle
+        camera.x += sin(camera.angle);
+        camera.y += cos(camera.angle);
     }
     if (keystate(KEY_LEFT)) {
-        camera.x--;
+        camera.angle+= 0.02;
     }
     if (keystate(KEY_RIGHT)) {
-        camera.x++;
+        camera.angle-= 0.02;
+    }
+    if (keystate(KEY_SHIFT)) {
+        camera.height--;
+    }
+    if (keystate(KEY_SPACE)) {
+        camera.height++;
     }
 }
 
@@ -77,11 +89,15 @@ int main(void) {
         // keyboard input
         processinput();
 
-        // far plane extent points (relative to camera)
-        float plx = -camera.zfar;
-        float ply =  camera.zfar;
-        float prx =  camera.zfar;
-        float pry =  camera.zfar;
+        // yaw angle
+        float sinangle = sin(camera.angle);
+        float cosangle = cos(camera.angle);
+
+        // far plane extent points (relative to camera + rotation)
+        float plx = (-cosangle - sinangle) * camera.zfar; // -camera.zfar;
+        float ply = ( sinangle - cosangle) * camera.zfar; // camera.zfar;
+        float prx = ( cosangle - sinangle) * camera.zfar; // camera.zfar;
+        float pry = (-sinangle - cosangle) * camera.zfar; // camera.zfar;
 
         // loop over screen columns
         for (int i = 0; i < SCREEN_WIDTH; i++) {
